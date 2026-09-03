@@ -722,6 +722,7 @@ body {
   border: 1px solid rgba(217, 119, 6, 0.2);
   border-radius: 6px;
   transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  min-width: 0;
 }
 
 .level-card.unlocked:hover {
@@ -786,23 +787,37 @@ body {
 
 .level-card-stats {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 10px;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 3px 6px;
+  flex-direction: column;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px 6px;
   border-radius: 4px;
+  font-size: 10px;
 }
 
 .level-stat {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 4px;
+  font-size: 10px;
+}
+
+.level-stat .stat-label {
+  color: var(--text-muted);
+}
+
+.level-stat .stat-value {
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .level-stars {
   color: var(--accent-gold);
   letter-spacing: 1px;
   font-size: 11px;
+  text-align: center;
+  margin-top: 1px;
 }
 
 .btn-play-level {
