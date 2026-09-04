@@ -111,6 +111,7 @@ export interface TowerUpgradedEvent {
   towerType: string;
   newTier: number;
   previousTier: number;
+  upgradePath?: string | null;
   upgradeCost: number;
   totalInvestedCost: number;
   damage: number;

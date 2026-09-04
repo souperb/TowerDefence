@@ -4,6 +4,11 @@
 export type TowerType = 'archer' | 'cannon' | 'mage';
 
 /**
+ * Upgrade paths for branching tower specializations.
+ */
+export type UpgradePath = 'path1' | 'path2';
+
+/**
  * Targeting priority strategies for towers.
  */
 export type TargetStrategy = 'first' | 'lowestHp' | 'closest';
@@ -34,6 +39,7 @@ export interface SpriteComponent {
 export interface TowerComponent {
   towerType: TowerType;
   tier: number;
+  upgradePath?: UpgradePath | null;
   range: number;
   fireRate: number; // Attacks per second
   damage?: number;

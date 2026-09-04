@@ -20,6 +20,7 @@ export interface GameProgress {
 export interface SavedTowerState {
   type: string;
   tier: number;
+  upgradePath?: 'path1' | 'path2' | null;
   gridX: number;
   gridY: number;
   targetStrategy?: 'first' | 'lowestHp' | 'closest';

@@ -59,7 +59,7 @@ describe('DamageCalculator (TASK-05-04)', () => {
   it('should clamp health at 0 and report the kill without emitting CREEP_DEATH itself', () => {
     const creep = CreepFactory.createFastCreep(world, [{ x: 20, y: 30 }]);
     const health = world.getComponent<HealthComponent>(creep, HEALTH_COMPONENT)!;
-    expect(health.current).toBe(50); // Fast creep HP is 50
+    expect(health.current).toBe(55); // Fast creep HP is 55
 
     let deathPayload: any = null;
     eventBus.on('CREEP_DEATH', (data) => {
@@ -68,7 +68,7 @@ describe('DamageCalculator (TASK-05-04)', () => {
 
     const result = DamageCalculator.applyDirectDamage(world, creep, 80, eventBus);
 
-    expect(result?.damageDealt).toBe(50);
+    expect(result?.damageDealt).toBe(55);
     expect(result?.remainingHp).toBe(0);
     expect(result?.isKilled).toBe(true);
     expect(health.current).toBe(0);

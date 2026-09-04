@@ -44,9 +44,10 @@ export class SettingsManager {
     if (key === 'masterVolume' || key === 'sfxVolume' || key === 'bgmVolume') {
       (this.currentSettings as any)[key] = clampVolume(value as number);
     } else if (key === 'gameSpeed') {
-      if (isValidGameSpeed(value)) {
-        this.currentSettings.gameSpeed = value;
+      if (!isValidGameSpeed(value)) {
+        return;
       }
+      this.currentSettings.gameSpeed = value;
     } else if (key === 'showRangeOnHover') {
       this.currentSettings.showRangeOnHover = Boolean(value);
     } else if (key === 'autoWave') {

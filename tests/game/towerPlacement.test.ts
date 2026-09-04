@@ -27,7 +27,7 @@ describe('Tower Catalog & Definitions (TASK-04-01)', () => {
     const archer = getTowerDefinition('archer');
     expect(archer.name).toBe('Archer Tower');
     expect(archer.baseCost).toBe(100);
-    expect(archer.range).toBe(120);
+    expect(archer.range).toBe(125);
     expect(archer.fireRate).toBeGreaterThan(0);
     expect(archer.damage).toBeGreaterThan(0);
     expect(archer.splashRadius).toBe(0);
@@ -78,8 +78,8 @@ describe('Tower Factory & ECS Instantiation (TASK-04-01)', () => {
     expect(tower).toBeDefined();
     expect(tower?.towerType).toBe('archer');
     expect(tower?.tier).toBe(1);
-    expect(tower?.range).toBe(120);
-    expect(tower?.fireRate).toBe(1.2);
+    expect(tower?.range).toBe(125);
+    expect(tower?.fireRate).toBe(1.35);
     expect(tower?.cooldownRemaining).toBe(0);
     expect(tower?.targetStrategy).toBe('first');
     expect(tower?.targetEntityId).toBeNull();

@@ -94,51 +94,51 @@ body {
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  gap: 6px;
-  flex-wrap: nowrap;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .hud-bar {
   pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: var(--panel-bg);
   backdrop-filter: blur(12px);
-  padding: 4px 12px;
-  border-radius: 10px;
+  padding: 4px 10px;
+  border-radius: 8px;
   border: 1px solid rgba(217, 119, 6, 0.35);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   font-weight: 600;
-  font-size: 13px;
-  min-height: 38px;
+  font-size: 12px;
+  min-height: 34px;
   flex-shrink: 0;
 }
 
 .hud-metric {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   white-space: nowrap;
 }
 
 .hud-metric .hud-icon {
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
 }
 
 .hud-metric .hud-label {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
 }
 
 .hud-metric .hud-value {
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--accent-blue);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 
 .hud-metric-gold .hud-value,
@@ -155,35 +155,50 @@ body {
 .action-controls {
   pointer-events: auto;
   display: flex;
-  gap: 5px;
+  gap: 4px;
   align-items: center;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 1;
 }
 
 .hud-controls-group .btn {
-  padding: 4px 10px;
-  min-height: 38px;
-  min-width: 38px;
+  padding: 4px 8px;
+  min-height: 34px;
+  min-width: 34px;
   font-size: 12px;
   gap: 4px;
   white-space: nowrap;
   flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.hud-controls-group .btn-start-wave {
+  padding: 4px 10px;
 }
 
 .hud-controls-group .btn-speed {
-  min-width: 40px;
-  padding: 4px 8px;
+  min-width: 36px;
+  padding: 4px 6px;
   font-variant-numeric: tabular-nums;
 }
 
 .hud-controls-group .btn-audio {
-  min-width: 40px;
-  padding: 4px 8px;
+  min-width: 36px;
+  padding: 4px 6px;
 }
 
 .hud-controls-group .btn-pause {
-  min-width: 64px;
-  padding: 4px 10px;
+  min-width: 58px;
+  padding: 4px 8px;
+}
+
+.hud-controls-group .btn-levels {
+  padding: 4px 8px;
+}
+
+.hud-controls-group .btn-auto-wave {
+  padding: 4px 8px;
 }
 
 /* Buttons */
@@ -463,6 +478,31 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.tower-upgrade-paths {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn-upgrade-path {
+  text-align: center;
+  font-size: 12px;
+  padding: 8px 10px;
+  line-height: 1.3;
+}
+
+.btn-upgrade-path2 {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.35), rgba(79, 70, 229, 0.45));
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  color: #f3e8ff;
+}
+
+.btn-upgrade-path2:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.5), rgba(79, 70, 229, 0.6));
+  border-color: rgba(192, 132, 252, 0.8);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
 }
 
 .btn-danger {

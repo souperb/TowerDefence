@@ -134,4 +134,21 @@ describe('PlacementRenderer (TASK-04-02)', () => {
 
     expect(ctx.arc).toHaveBeenCalled();
   });
+
+  it('should render selected tower range matching initial purchase visual style', () => {
+    renderer.renderSelectedTowerRange(ctx, 100, 100, 125);
+
+    expect(ctx.arc).toHaveBeenCalledWith(100, 100, 125, 0, Math.PI * 2);
+    expect(ctx.fill).toHaveBeenCalled();
+    expect(ctx.stroke).toHaveBeenCalled();
+  });
+
+  it('should render preview upgrade range when hovering an upgrade option', () => {
+    renderer.renderSelectedTowerRange(ctx, 100, 100, 125, 145, 'path1');
+
+    // Should draw both current range (125) and preview upgrade range (145)
+    expect(ctx.arc).toHaveBeenCalledWith(100, 100, 125, 0, Math.PI * 2);
+    expect(ctx.arc).toHaveBeenCalledWith(100, 100, 145, 0, Math.PI * 2);
+    expect(ctx.setLineDash).toHaveBeenCalledWith([5, 4]);
+  });
 });

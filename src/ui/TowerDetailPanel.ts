@@ -9,12 +9,15 @@ import {
   TOWER_COMPONENT,
   TowerComponent,
   TargetStrategy,
+  UpgradePath,
 } from '../game/towers/TowerComponents';
 import { getTowerDefinition } from '../game/towers/TowerCatalog';
 import {
   MAX_TOWER_TIER,
   getUpgradeCost,
   getNextTierStats,
+  getTowerUpgradePaths,
+  getTowerUpgradePathInfo,
 } from '../game/towers/TowerUpgradeDefinitions';
 
 export interface TowerDetailPanelConfig {
@@ -28,6 +31,21 @@ export interface TowerDetailPanelConfig {
   eventBus?: EventBus;
 }
 
+export interface TowerPathUpgradeViewModel {
+  pathId: UpgradePath;
+  name: string;
+  nextTierName: string;
+  description: string;
+  cost: number | null;
+  canAfford: boolean;
+  isLocked: boolean;
+  isMaxTier: boolean;
+  nextDamage?: number;
+  nextRange?: number;
+  nextFireRate?: number;
+  nextSplashRadius?: number;
+}
+
 export interface TowerDetailViewModel {
   entity: Entity;
   towerType: string;
@@ -35,6 +53,8 @@ export interface TowerDetailViewModel {
   icon: string;
   tier: number;
   maxTier: number;
+  upgradePath?: UpgradePath | null;
+  pathName?: string;
   damage: number;
   nextDamage?: number;
   range: number;
@@ -50,11 +70,13 @@ export interface TowerDetailViewModel {
   canAffordUpgrade: boolean;
   isMaxTier: boolean;
   sellRefund: number;
+  path1: TowerPathUpgradeViewModel;
+  path2: TowerPathUpgradeViewModel;
 }
 
 /**
  * UI Panel displaying selected tower statistics, tier progression,
- * upgrade cost & action button, sell refund & action button, and targeting strategy cycle button.
+ * dual upgrade paths, sell refund, and targeting strategy cycle button.
  */
 export class TowerDetailPanel {
   private element: HTMLElement;
@@ -70,6 +92,7 @@ export class TowerDetailPanel {
   private eventBus: EventBus;
 
   private currentEntity: Entity | null = null;
+  private hoveredPath: UpgradePath | null = null;
   private unsubs: Array<() => void> = [];
 
   constructor(config: TowerDetailPanelConfig) {
@@ -130,9 +153,14 @@ export class TowerDetailPanel {
       </div>
 
       <div class="tower-detail-actions">
-        <button class="btn btn-primary btn-upgrade" data-ref="btnUpgrade">
-          Upgrade (75g)
-        </button>
+        <div class="tower-upgrade-paths" data-ref="upgradePaths">
+          <button class="btn btn-primary btn-upgrade btn-upgrade-path" data-ref="btnUpgrade" data-path="path1">
+            Upgrade (75g)
+          </button>
+          <button class="btn btn-primary btn-upgrade-path btn-upgrade-path2" data-ref="btnUpgradePath2" data-path="path2">
+            Path 2 (75g)
+          </button>
+        </div>
         <button class="btn btn-secondary btn-strategy" data-ref="btnStrategy" title="Cycle targeting priority">
           Target: First
         </button>
@@ -147,7 +175,42 @@ export class TowerDetailPanel {
     btnClose?.addEventListener('click', () => this.handleCloseClick());
 
     const btnUpgrade = el.querySelector('[data-ref="btnUpgrade"]') as HTMLButtonElement | null;
-    btnUpgrade?.addEventListener('click', () => this.handleUpgradeClick());
+    btnUpgrade?.addEventListener('click', () => this.handleUpgradeClick('path1'));
+    btnUpgrade?.addEventListener('mouseenter', () => {
+      this.hoveredPath = 'path1';
+      this.update();
+    });
+    btnUpgrade?.addEventListener('mouseleave', () => {
+      this.hoveredPath = null;
+      this.update();
+    });
+    btnUpgrade?.addEventListener('focus', () => {
+      this.hoveredPath = 'path1';
+      this.update();
+    });
+    btnUpgrade?.addEventListener('blur', () => {
+      this.hoveredPath = null;
+      this.update();
+    });
+
+    const btnUpgradePath2 = el.querySelector('[data-ref="btnUpgradePath2"]') as HTMLButtonElement | null;
+    btnUpgradePath2?.addEventListener('click', () => this.handleUpgradePathClick('path2'));
+    btnUpgradePath2?.addEventListener('mouseenter', () => {
+      this.hoveredPath = 'path2';
+      this.update();
+    });
+    btnUpgradePath2?.addEventListener('mouseleave', () => {
+      this.hoveredPath = null;
+      this.update();
+    });
+    btnUpgradePath2?.addEventListener('focus', () => {
+      this.hoveredPath = 'path2';
+      this.update();
+    });
+    btnUpgradePath2?.addEventListener('blur', () => {
+      this.hoveredPath = null;
+      this.update();
+    });
 
     const btnStrategy = el.querySelector('[data-ref="btnStrategy"]') as HTMLButtonElement | null;
     btnStrategy?.addEventListener('click', () => this.handleCycleStrategyClick());
@@ -237,6 +300,7 @@ export class TowerDetailPanel {
     }
 
     this.currentEntity = entity;
+    this.hoveredPath = null;
     this.isVisible = true;
     this.element.style.display = 'flex';
     this.update();
@@ -247,6 +311,7 @@ export class TowerDetailPanel {
    */
   public hide(): void {
     this.currentEntity = null;
+    this.hoveredPath = null;
     this.isVisible = false;
     this.element.style.display = 'none';
   }
@@ -263,6 +328,44 @@ export class TowerDetailPanel {
    */
   public getSelectedEntity(): Entity | null {
     return this.currentEntity;
+  }
+
+  /**
+   * Returns the currently hovered upgrade path, if any.
+   */
+  public getHoveredPath(): UpgradePath | null {
+    return this.hoveredPath;
+  }
+
+  /**
+   * Sets the hovered upgrade path programmatically.
+   */
+  public setHoveredPath(path: UpgradePath | null): void {
+    this.hoveredPath = path;
+    this.update();
+  }
+
+  /**
+   * Returns the previewed attack range of the hovered upgrade path,
+   * or null if no upgrade is hovered or if the hovered path is locked/max-tier.
+   */
+  public getPreviewUpgradeRange(): number | null {
+    if (this.currentEntity === null || !this.world.isAlive(this.currentEntity) || this.hoveredPath === null) {
+      return null;
+    }
+
+    const tower = this.world.getComponent<TowerComponent>(this.currentEntity, TOWER_COMPONENT);
+    if (!tower || tower.tier >= MAX_TOWER_TIER) {
+      return null;
+    }
+
+    // If locked into other path at tier >= 2, disallow preview
+    if (tower.tier >= 2 && tower.upgradePath && tower.upgradePath !== this.hoveredPath) {
+      return null;
+    }
+
+    const nextStats = getNextTierStats(tower.towerType, tower.tier, this.hoveredPath);
+    return nextStats ? nextStats.range : null;
   }
 
   /**
@@ -288,14 +391,58 @@ export class TowerDetailPanel {
     if (!tower) return null;
 
     const def = getTowerDefinition(tower.towerType);
+    const paths = getTowerUpgradePaths(tower.towerType);
     const isMaxTier = tower.tier >= MAX_TOWER_TIER;
-    const upgradeCost = getUpgradeCost(tower.towerType, tower.tier);
-    const nextStats = getNextTierStats(tower.towerType, tower.tier);
+
+    // Active or previewed path
+    const activePath: UpgradePath = this.hoveredPath ?? tower.upgradePath ?? 'path1';
+    const upgradeCost = getUpgradeCost(tower.towerType, tower.tier, activePath);
+    const nextStats = getNextTierStats(tower.towerType, tower.tier, activePath);
     const canAffordUpgrade =
       !isMaxTier && upgradeCost !== null && this.economy.canAfford(upgradeCost);
 
     const damage = tower.damage ?? def.damage;
     const splashRadius = tower.splashRadius ?? def.splashRadius;
+
+    // Path 1 details
+    const p1Cost = getUpgradeCost(tower.towerType, tower.tier, 'path1');
+    const p1NextStats = getNextTierStats(tower.towerType, tower.tier, 'path1');
+    const p1Locked = tower.tier >= 2 && tower.upgradePath === 'path2';
+    const p1Max = isMaxTier || (tower.tier >= 2 && tower.upgradePath === 'path1' && tower.tier >= MAX_TOWER_TIER);
+    const path1VM: TowerPathUpgradeViewModel = {
+      pathId: 'path1',
+      name: paths.path1.name,
+      nextTierName: p1NextStats?.name ?? paths.path1.name,
+      description: paths.path1.description,
+      cost: p1Cost,
+      canAfford: !p1Locked && !p1Max && p1Cost !== null && this.economy.canAfford(p1Cost),
+      isLocked: p1Locked,
+      isMaxTier: isMaxTier,
+      nextDamage: p1NextStats?.damage,
+      nextRange: p1NextStats?.range,
+      nextFireRate: p1NextStats?.fireRate,
+      nextSplashRadius: p1NextStats?.splashRadius,
+    };
+
+    // Path 2 details
+    const p2Cost = getUpgradeCost(tower.towerType, tower.tier, 'path2');
+    const p2NextStats = getNextTierStats(tower.towerType, tower.tier, 'path2');
+    const p2Locked = tower.tier >= 2 && tower.upgradePath === 'path1';
+    const p2Max = isMaxTier || (tower.tier >= 2 && tower.upgradePath === 'path2' && tower.tier >= MAX_TOWER_TIER);
+    const path2VM: TowerPathUpgradeViewModel = {
+      pathId: 'path2',
+      name: paths.path2.name,
+      nextTierName: p2NextStats?.name ?? paths.path2.name,
+      description: paths.path2.description,
+      cost: p2Cost,
+      canAfford: !p2Locked && !p2Max && p2Cost !== null && this.economy.canAfford(p2Cost),
+      isLocked: p2Locked,
+      isMaxTier: isMaxTier,
+      nextDamage: p2NextStats?.damage,
+      nextRange: p2NextStats?.range,
+      nextFireRate: p2NextStats?.fireRate,
+      nextSplashRadius: p2NextStats?.splashRadius,
+    };
 
     // Calculate 70% refund of cumulative invested gold
     const sellRefund = this.sellSystem
@@ -308,6 +455,8 @@ export class TowerDetailPanel {
       closest: 'Closest',
     };
 
+    const currentPathInfo = tower.upgradePath ? getTowerUpgradePathInfo(tower.towerType, tower.upgradePath) : null;
+
     return {
       entity: this.currentEntity,
       towerType: tower.towerType,
@@ -315,6 +464,8 @@ export class TowerDetailPanel {
       icon: def.icon,
       tier: tower.tier,
       maxTier: MAX_TOWER_TIER,
+      upgradePath: tower.upgradePath ?? null,
+      pathName: currentPathInfo?.name,
       damage,
       nextDamage: nextStats?.damage,
       range: tower.range,
@@ -330,6 +481,8 @@ export class TowerDetailPanel {
       canAffordUpgrade,
       isMaxTier,
       sellRefund,
+      path1: path1VM,
+      path2: path2VM,
     };
   }
 
@@ -360,26 +513,37 @@ export class TowerDetailPanel {
 
     const tierEl = el.querySelector('[data-ref="tier"]');
     if (tierEl) {
-      tierEl.textContent = `Tier ${vm.tier} / ${vm.maxTier}`;
+      if (vm.pathName && vm.tier >= 2) {
+        tierEl.textContent = `Tier ${vm.tier} / ${vm.maxTier} • ${vm.pathName}`;
+      } else {
+        tierEl.textContent = `Tier ${vm.tier} / ${vm.maxTier}`;
+      }
     }
 
     // Stats
     const damageEl = el.querySelector('[data-ref="damage"]');
     if (damageEl) {
       damageEl.textContent =
-        vm.nextDamage !== undefined ? `${vm.damage} → ${vm.nextDamage}` : `${vm.damage}`;
+        vm.nextDamage !== undefined && !vm.isMaxTier
+          ? `${vm.damage} → ${vm.nextDamage}`
+          : `${vm.damage}`;
     }
 
     const rangeEl = el.querySelector('[data-ref="range"]');
     if (rangeEl) {
       rangeEl.textContent =
-        vm.nextRange !== undefined ? `${vm.range} → ${vm.nextRange}` : `${vm.range}`;
+        vm.nextRange !== undefined && !vm.isMaxTier
+          ? `${vm.range} → ${vm.nextRange}`
+          : `${vm.range}`;
     }
 
     const fireRateEl = el.querySelector('[data-ref="fireRate"]');
     if (fireRateEl) {
       const currentRate = Number(vm.fireRate.toFixed(1));
-      const nextRate = vm.nextFireRate ? Number(vm.nextFireRate.toFixed(1)) : null;
+      const nextRate =
+        vm.nextFireRate !== undefined && !vm.isMaxTier
+          ? Number(vm.nextFireRate.toFixed(1))
+          : null;
       fireRateEl.textContent =
         nextRate !== null ? `${currentRate}/s → ${nextRate}/s` : `${currentRate}/s`;
     }
@@ -388,10 +552,10 @@ export class TowerDetailPanel {
     const splashRowEl = el.querySelector('[data-ref="splashRow"]') as HTMLElement | null;
     const splashRadiusEl = el.querySelector('[data-ref="splashRadius"]');
     if (splashRowEl && splashRadiusEl) {
-      if (vm.splashRadius > 0 || (vm.nextSplashRadius ?? 0) > 0) {
+      if (vm.splashRadius > 0 || ((vm.nextSplashRadius ?? 0) > 0 && !vm.isMaxTier)) {
         splashRowEl.style.display = 'flex';
         splashRadiusEl.textContent =
-          vm.nextSplashRadius !== undefined
+          vm.nextSplashRadius !== undefined && !vm.isMaxTier
             ? `${vm.splashRadius}px → ${vm.nextSplashRadius}px`
             : `${vm.splashRadius}px`;
       } else {
@@ -405,15 +569,35 @@ export class TowerDetailPanel {
       strategyEl.textContent = vm.strategyLabel;
     }
 
-    // Upgrade Button
+    // Path 1 Upgrade Button
     const btnUpgrade = el.querySelector('[data-ref="btnUpgrade"]') as HTMLButtonElement | null;
     if (btnUpgrade) {
       if (vm.isMaxTier) {
         btnUpgrade.textContent = 'Max Tier';
         btnUpgrade.disabled = true;
+      } else if (vm.path1.isLocked) {
+        btnUpgrade.textContent = 'Path 1 (Locked)';
+        btnUpgrade.disabled = true;
       } else {
-        btnUpgrade.textContent = `Upgrade (${vm.upgradeCost}g)`;
-        btnUpgrade.disabled = !vm.canAffordUpgrade;
+        const p1Title = vm.tier === 1 ? `Path 1: ${vm.path1.name}` : vm.path1.nextTierName;
+        btnUpgrade.textContent = `${p1Title} (${vm.path1.cost}g)`;
+        btnUpgrade.disabled = !vm.path1.canAfford;
+      }
+    }
+
+    // Path 2 Upgrade Button
+    const btnUpgradePath2 = el.querySelector('[data-ref="btnUpgradePath2"]') as HTMLButtonElement | null;
+    if (btnUpgradePath2) {
+      if (vm.isMaxTier) {
+        btnUpgradePath2.textContent = 'Max Tier';
+        btnUpgradePath2.disabled = true;
+      } else if (vm.path2.isLocked) {
+        btnUpgradePath2.textContent = 'Path 2 (Locked)';
+        btnUpgradePath2.disabled = true;
+      } else {
+        const p2Title = vm.tier === 1 ? `Path 2: ${vm.path2.name}` : vm.path2.nextTierName;
+        btnUpgradePath2.textContent = `${p2Title} (${vm.path2.cost}g)`;
+        btnUpgradePath2.disabled = !vm.path2.canAfford;
       }
     }
 
@@ -431,19 +615,26 @@ export class TowerDetailPanel {
   }
 
   /**
-   * Action: Handles clicking the Upgrade button.
+   * Action: Handles clicking the primary/Path 1 Upgrade button.
    */
-  public handleUpgradeClick(): boolean {
+  public handleUpgradeClick(path: UpgradePath = 'path1'): boolean {
     if (this.currentEntity === null) return false;
 
     if (this.upgradeSystem) {
-      const success = this.upgradeSystem.upgradeTower(this.world, this.currentEntity);
+      const success = this.upgradeSystem.upgradeTower(this.world, this.currentEntity, path);
       if (success) {
         this.update();
       }
       return success;
     }
     return false;
+  }
+
+  /**
+   * Action: Handles clicking the Path 2 Upgrade button.
+   */
+  public handleUpgradePathClick(path: UpgradePath): boolean {
+    return this.handleUpgradeClick(path);
   }
 
   /**
@@ -481,20 +672,26 @@ export class TowerDetailPanel {
    */
   public handleCloseClick(): void {
     this.selectionController.deselect();
+    this.hide();
   }
 
   /**
-   * Cleans up event listeners and unmounts DOM elements.
+   * Destroys the component and cleans up listeners.
    */
   public destroy(): void {
-    for (const unsub of this.unsubs) {
-      unsub();
-    }
+    this.unsubs.forEach((unsub) => {
+      try {
+        unsub();
+      } catch (err) {
+        console.error('[TowerDetailPanel] Error during unsub:', err);
+      }
+    });
     this.unsubs = [];
-
-    if (this.isMounted && this.element.parentElement) {
+    if (this.element.parentElement) {
       this.element.parentElement.removeChild(this.element);
-      this.isMounted = false;
     }
+    this.isMounted = false;
+    this.isVisible = false;
+    this.currentEntity = null;
   }
 }

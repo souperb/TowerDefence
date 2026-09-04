@@ -105,7 +105,7 @@ describe('CreepDeathSystem (US-06 / TASK-06-01 & TASK-06-03)', () => {
   });
 
   it('should award correct bounty and score for different creep types', () => {
-    // Fast creep: bounty 15, score 30
+    // Fast creep: bounty 6, score 25
     const fastCreep = CreepFactory.createFastCreep(world, [{ x: 10, y: 10 }]);
     const fastHealth = world.getComponent<HealthComponent>(fastCreep, HEALTH_COMPONENT)!;
     fastHealth.current = -5; // negative health also handled
@@ -113,8 +113,8 @@ describe('CreepDeathSystem (US-06 / TASK-06-01 & TASK-06-03)', () => {
     world.update(0.016);
 
     expect(world.isAlive(fastCreep)).toBe(false);
-    expect(economyManager.getGold()).toBe(300 + 15);
-    expect(scoreManager.getScore()).toBe(30);
+    expect(economyManager.getGold()).toBe(300 + 6);
+    expect(scoreManager.getScore()).toBe(25);
   });
 
   it('should scale score according to scoreManager multipliers on creep death', () => {
@@ -146,10 +146,10 @@ describe('CreepDeathSystem (US-06 / TASK-06-01 & TASK-06-03)', () => {
     expect(world.isAlive(creep2)).toBe(false);
     expect(world.isAlive(creep3)).toBe(true);
 
-    // bounty: 10 (basic) + 15 (fast) = 25
-    expect(economyManager.getGold()).toBe(325);
-    // score: 20 (basic) + 30 (fast) = 50
-    expect(scoreManager.getScore()).toBe(50);
+    // bounty: 8 (basic) + 6 (fast) = 14
+    expect(economyManager.getGold()).toBe(314);
+    // score: 20 (basic) + 25 (fast) = 45
+    expect(scoreManager.getScore()).toBe(45);
     expect(deathSystem.getDeathCount()).toBe(2);
   });
 

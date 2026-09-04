@@ -188,6 +188,8 @@ if (canvas) {
     let simulatedDtThisFrame = 0;
     const gameLoop = new GameLoop({
       tickRate: 60,
+      // 4x speed needs 8 ticks/frame at 30 fps; the default cap of 5 would silently slow it down
+      maxTicksPerFrame: 12,
       onTick: (dt) => {
         waveManager.update(world, dt);
         world.update(dt);
@@ -283,7 +285,7 @@ if (canvas) {
       eventBus: engineEvents,
     });
 
-    new TowerDetailPanel({
+    const towerDetailPanel = new TowerDetailPanel({
       container: uiLayer,
       world,
       economy,
@@ -383,6 +385,12 @@ if (canvas) {
       const color =
         towerType === 'cannon' ? '#f97316' : towerType === 'mage' ? '#a855f7' : '#38bdf8';
       projectileRenderer.addImpactEffect(impactPos, splashRadius > 0 ? splashRadius : 20, color);
+    });
+
+    // Entity IDs are recycled, so a selection left over from the previous level could point at a new entity
+    engineEvents.on('LEVEL_LOADED', () => {
+      selectionController.deselect();
+      placementController.cancelPlacement();
     });
 
     engineEvents.on('GAME_OVER', (data) => {
@@ -531,7 +539,8 @@ if (canvas) {
           // 3. Tier Progression Badges / Glowing Glyphs
           const pipSize = 2.5;
           const pipY = halfBase - 3;
-          renderCtx.fillStyle = '#fbbf24'; // Gilded Amber / Sol gold
+          const upgradePath = tower?.upgradePath ?? 'path1';
+          renderCtx.fillStyle = upgradePath === 'path2' ? '#c084fc' : '#fbbf24'; // Violet for Path 2, Sol gold for Path 1
 
           if (tier === 1) {
             renderCtx.fillRect(-pipSize / 2, pipY - pipSize, pipSize, pipSize);
@@ -544,7 +553,10 @@ if (canvas) {
             renderCtx.fillRect(pipSize * 0.5 + 2, pipY - pipSize, pipSize, pipSize);
 
             // Radiant Apex Halo for Tier 3 Max Relic
-            renderCtx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+            renderCtx.strokeStyle =
+              upgradePath === 'path2'
+                ? 'rgba(192, 132, 252, 0.85)'
+                : 'rgba(251, 191, 36, 0.75)';
             renderCtx.lineWidth = 1;
             renderCtx.beginPath();
             renderCtx.arc(0, 0, halfBase * 0.9, 0, Math.PI * 2);
@@ -562,6 +574,30 @@ if (canvas) {
       viewport.applyTransform(ctx);
 
       mapRenderer.render(ctx);
+
+      // Render attack range of currently selected tower and upgrade preview range when hovered
+      const selectedEntity = selectionController.getSelectedEntity();
+      if (
+        selectedEntity !== null &&
+        world.isAlive(selectedEntity) &&
+        !placementController.isPlacing()
+      ) {
+        const tower = world.getComponent<TowerComponent>(selectedEntity, TOWER_COMPONENT);
+        const pos = world.getComponent<PositionComponent>(selectedEntity, POSITION_COMPONENT);
+        if (tower && pos) {
+          const previewRange = towerDetailPanel.getPreviewUpgradeRange();
+          const hoveredPath = towerDetailPanel.getHoveredPath();
+          placementRenderer.renderSelectedTowerRange(
+            ctx,
+            pos.x,
+            pos.y,
+            tower.range,
+            previewRange,
+            hoveredPath
+          );
+        }
+      }
+
       renderTowers(ctx);
       creepRenderer.render(ctx);
       projectileRenderer.render(ctx, dt);

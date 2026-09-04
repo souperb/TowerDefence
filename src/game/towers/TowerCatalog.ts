@@ -69,11 +69,11 @@ export const TOWER_CATALOG: Record<TowerType, TowerDefinition> = {
     icon: TOWER_ICONS.archer,
     spriteId: 'tower_archer',
     baseCost: 100,
-    range: 120,
-    fireRate: 1.2,
-    damage: 15,
+    range: 125,
+    fireRate: 1.35,
+    damage: 20,
     splashRadius: 0,
-    projectileSpeed: 320,
+    projectileSpeed: 340,
     color: '#38bdf8', // Relic Cyan / Hard Light
   },
   cannon: {
@@ -86,8 +86,8 @@ export const TOWER_CATALOG: Record<TowerType, TowerDefinition> = {
     baseCost: 150,
     range: 100,
     fireRate: 0.6,
-    damage: 45,
-    splashRadius: 48,
+    damage: 40,
+    splashRadius: 42,
     projectileSpeed: 200,
     color: '#f97316', // Smoldering Amber / Plasma
   },
@@ -100,8 +100,8 @@ export const TOWER_CATALOG: Record<TowerType, TowerDefinition> = {
     spriteId: 'tower_mage',
     baseCost: 200,
     range: 140,
-    fireRate: 0.8,
-    damage: 60,
+    fireRate: 0.85,
+    damage: 75,
     splashRadius: 0,
     projectileSpeed: 260,
     color: '#a855f7', // Eldritch Amethyst / Thaumaturgic Violet

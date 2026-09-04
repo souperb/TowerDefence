@@ -14,6 +14,9 @@ import {
   getNextTierStats,
   canUpgradeTier,
   getMaxTier,
+  getTowerUpgradeTree,
+  getTowerUpgradePaths,
+  getTowerUpgradePathInfo,
 } from '../../src/game/towers/TowerUpgradeDefinitions';
 import {
   TowerUpgradeSystem,
@@ -26,74 +29,141 @@ describe('Tower Upgrade Definitions & Stat Progressions (TASK-07-02)', () => {
     expect(getMaxTier()).toBe(3);
   });
 
-  it('should have 3-tier stat progressions for Archer Tower with increasing stats', () => {
+  it('should provide two distinct upgrade paths for each tower type', () => {
+    for (const type of ['archer', 'cannon', 'mage'] as const) {
+      const tree = getTowerUpgradeTree(type);
+      expect(tree.base).toBeDefined();
+      expect(tree.path1).toBeDefined();
+      expect(tree.path2).toBeDefined();
+      expect(tree.path1.name).toBeTruthy();
+      expect(tree.path2.name).toBeTruthy();
+      expect(tree.path1.name).not.toBe(tree.path2.name);
+
+      const paths = getTowerUpgradePaths(type);
+      expect(paths.path1.pathId).toBe('path1');
+      expect(paths.path2.pathId).toBe('path2');
+
+      const p1Info = getTowerUpgradePathInfo(type, 'path1');
+      const p2Info = getTowerUpgradePathInfo(type, 'path2');
+      expect(p1Info.pathId).toBe('path1');
+      expect(p2Info.pathId).toBe('path2');
+    }
+  });
+
+  it('should have 3-tier stat progressions for Archer Tower along Path 1 and Path 2', () => {
+    // Base & Path 1
     const t1 = getTowerTierStats('archer', 1);
-    const t2 = getTowerTierStats('archer', 2);
-    const t3 = getTowerTierStats('archer', 3);
+    const p1_t2 = getTowerTierStats('archer', 2, 'path1');
+    const p1_t3 = getTowerTierStats('archer', 3, 'path1');
 
     expect(t1.tier).toBe(1);
-    expect(t1.damage).toBe(15);
-    expect(t1.range).toBe(120);
-    expect(t1.fireRate).toBe(1.2);
+    expect(t1.damage).toBe(20);
+    expect(t1.range).toBe(125);
+    expect(t1.fireRate).toBe(1.35);
     expect(t1.upgradeCost).toBe(75);
 
-    expect(t2.tier).toBe(2);
-    expect(t2.damage).toBeGreaterThan(t1.damage);
-    expect(t2.range).toBeGreaterThan(t1.range);
-    expect(t2.fireRate).toBeGreaterThan(t1.fireRate);
-    expect(t2.upgradeCost).toBe(150);
+    expect(p1_t2.tier).toBe(2);
+    expect(p1_t2.damage).toBe(35);
+    expect(p1_t2.range).toBe(145);
+    expect(p1_t2.fireRate).toBe(1.65);
+    expect(p1_t2.upgradeCost).toBe(150);
 
-    expect(t3.tier).toBe(3);
-    expect(t3.damage).toBeGreaterThan(t2.damage);
-    expect(t3.range).toBeGreaterThan(t2.range);
-    expect(t3.fireRate).toBeGreaterThan(t2.fireRate);
-    expect(t3.upgradeCost).toBe(0); // Max tier
+    expect(p1_t3.tier).toBe(3);
+    expect(p1_t3.damage).toBe(55);
+    expect(p1_t3.range).toBe(165);
+    expect(p1_t3.fireRate).toBe(2.1);
+    expect(p1_t3.upgradeCost).toBe(0);
+
+    // Path 2 (Rapid Fire specialization)
+    const p2_t2 = getTowerTierStats('archer', 2, 'path2');
+    const p2_t3 = getTowerTierStats('archer', 3, 'path2');
+
+    expect(p2_t2.tier).toBe(2);
+    expect(p2_t2.damage).toBe(25);
+    expect(p2_t2.range).toBe(130);
+    expect(p2_t2.fireRate).toBe(2.4); // higher fire rate than path 1
+    expect(p2_t2.upgradeCost).toBe(150);
+
+    expect(p2_t3.tier).toBe(3);
+    expect(p2_t3.damage).toBe(38);
+    expect(p2_t3.fireRate).toBe(3.6); // very high fire rate
+    expect(p2_t3.upgradeCost).toBe(0);
   });
 
-  it('should have 3-tier stat progressions for Cannon Tower with increasing splash & damage', () => {
+  it('should have 3-tier stat progressions for Cannon Tower along Path 1 (Heavy) and Path 2 (Cluster)', () => {
     const t1 = getTowerTierStats('cannon', 1);
-    const t2 = getTowerTierStats('cannon', 2);
-    const t3 = getTowerTierStats('cannon', 3);
+    const p1_t2 = getTowerTierStats('cannon', 2, 'path1');
+    const p1_t3 = getTowerTierStats('cannon', 3, 'path1');
 
-    expect(t1.damage).toBe(45);
-    expect(t1.splashRadius).toBe(48);
+    expect(t1.damage).toBe(40);
+    expect(t1.splashRadius).toBe(42);
     expect(t1.upgradeCost).toBe(120);
 
-    expect(t2.damage).toBe(80);
-    expect(t2.splashRadius).toBe(60);
-    expect(t2.upgradeCost).toBe(200);
+    expect(p1_t2.damage).toBe(70);
+    expect(p1_t2.splashRadius).toBe(52);
+    expect(p1_t2.upgradeCost).toBe(200);
 
-    expect(t3.damage).toBe(140);
-    expect(t3.splashRadius).toBe(75);
-    expect(t3.upgradeCost).toBe(0);
+    expect(p1_t3.damage).toBe(110);
+    expect(p1_t3.splashRadius).toBe(62);
+    expect(p1_t3.upgradeCost).toBe(0);
+
+    // Path 2 (Cluster Shrapnel specialization)
+    const p2_t2 = getTowerTierStats('cannon', 2, 'path2');
+    const p2_t3 = getTowerTierStats('cannon', 3, 'path2');
+
+    expect(p2_t2.damage).toBe(50);
+    expect(p2_t2.splashRadius).toBe(68); // wider splash than path 1
+    expect(p2_t2.fireRate).toBe(0.95); // faster fire rate
+
+    expect(p2_t3.damage).toBe(80);
+    expect(p2_t3.splashRadius).toBe(88); // massive splash
+    expect(p2_t3.fireRate).toBe(1.25);
   });
 
-  it('should have 3-tier stat progressions for Mage Tower with high damage and range', () => {
+  it('should have 3-tier stat progressions for Mage Tower along Path 1 (Beam) and Path 2 (Nova)', () => {
     const t1 = getTowerTierStats('mage', 1);
-    const t2 = getTowerTierStats('mage', 2);
-    const t3 = getTowerTierStats('mage', 3);
+    const p1_t2 = getTowerTierStats('mage', 2, 'path1');
+    const p1_t3 = getTowerTierStats('mage', 3, 'path1');
 
-    expect(t1.damage).toBe(60);
+    expect(t1.damage).toBe(75);
     expect(t1.range).toBe(140);
+    expect(t1.fireRate).toBe(0.85);
     expect(t1.upgradeCost).toBe(160);
 
-    expect(t2.damage).toBe(110);
-    expect(t2.range).toBe(160);
-    expect(t2.upgradeCost).toBe(280);
+    expect(p1_t2.damage).toBe(135);
+    expect(p1_t2.range).toBe(160);
+    expect(p1_t2.upgradeCost).toBe(280);
 
-    expect(t3.damage).toBe(190);
-    expect(t3.range).toBe(180);
-    expect(t3.upgradeCost).toBe(0);
+    expect(p1_t3.damage).toBe(220);
+    expect(p1_t3.range).toBe(180);
+    expect(p1_t3.upgradeCost).toBe(0);
+
+    // Path 2 (Pulsar Nova specialization)
+    const p2_t2 = getTowerTierStats('mage', 2, 'path2');
+    const p2_t3 = getTowerTierStats('mage', 3, 'path2');
+
+    expect(p2_t2.damage).toBe(95);
+    expect(p2_t2.splashRadius).toBe(36); // gained splash
+    expect(p2_t2.fireRate).toBe(1.35);
+
+    expect(p2_t3.damage).toBe(150);
+    expect(p2_t3.splashRadius).toBe(56);
+    expect(p2_t3.fireRate).toBe(1.75);
   });
 
-  it('should return correct upgrade costs and null for max tier', () => {
+  it('should return correct upgrade costs and null for max tier across paths', () => {
     expect(getUpgradeCost('archer', 1)).toBe(75);
-    expect(getUpgradeCost('archer', 2)).toBe(150);
-    expect(getUpgradeCost('archer', 3)).toBeNull();
+    expect(getUpgradeCost('archer', 2, 'path1')).toBe(150);
+    expect(getUpgradeCost('archer', 2, 'path2')).toBe(150);
+    expect(getUpgradeCost('archer', 3, 'path1')).toBeNull();
+    expect(getUpgradeCost('archer', 3, 'path2')).toBeNull();
 
-    expect(getNextTierStats('archer', 1)?.tier).toBe(2);
-    expect(getNextTierStats('archer', 2)?.tier).toBe(3);
-    expect(getNextTierStats('archer', 3)).toBeNull();
+    expect(getNextTierStats('archer', 1, 'path1')?.tier).toBe(2);
+    expect(getNextTierStats('archer', 1, 'path2')?.tier).toBe(2);
+    expect(getNextTierStats('archer', 2, 'path1')?.tier).toBe(3);
+    expect(getNextTierStats('archer', 2, 'path2')?.tier).toBe(3);
+    expect(getNextTierStats('archer', 3, 'path1')).toBeNull();
+    expect(getNextTierStats('archer', 3, 'path2')).toBeNull();
 
     expect(canUpgradeTier(1)).toBe(true);
     expect(canUpgradeTier(2)).toBe(true);
@@ -133,10 +203,11 @@ describe('TowerUpgradeSystem (TASK-07-02)', () => {
       expect(data.towerType).toBe('archer');
       expect(data.newTier).toBe(2);
       expect(data.previousTier).toBe(1);
+      expect(data.upgradePath).toBe('path1');
       expect(data.upgradeCost).toBe(upgradeCost);
-      expect(data.damage).toBe(25);
-      expect(data.range).toBe(140);
-      expect(data.fireRate).toBe(1.5);
+      expect(data.damage).toBe(35);
+      expect(data.range).toBe(145);
+      expect(data.fireRate).toBe(1.65);
       expect(data.gridX).toBe(2);
       expect(data.gridY).toBe(3);
     });
@@ -151,10 +222,43 @@ describe('TowerUpgradeSystem (TASK-07-02)', () => {
     // Tower component updated
     const tower = world.getComponent<TowerComponent>(towerEntity, TOWER_COMPONENT)!;
     expect(tower.tier).toBe(2);
-    expect(tower.damage).toBe(25);
-    expect(tower.range).toBe(140);
-    expect(tower.fireRate).toBe(1.5);
+    expect(tower.upgradePath).toBe('path1');
+    expect(tower.damage).toBe(35);
+    expect(tower.range).toBe(145);
+    expect(tower.fireRate).toBe(1.65);
     expect(tower.totalInvestedCost).toBe(getTowerDefinition('archer').baseCost + upgradeCost);
+  });
+
+  it('should successfully upgrade a tower along Path 2 and enforce path locking', () => {
+    const towerEntity = TowerFactory.createTower(world, 'archer', 3, 3);
+    const initialGold = economy.getGold(); // 500
+
+    // Upgrade along Path 2 from Tier 1 -> Tier 2
+    const successP2 = upgradeSystem.upgradeTower(world, towerEntity, 'path2');
+    expect(successP2).toBe(true);
+    expect(economy.getGold()).toBe(initialGold - 75);
+
+    const tower = world.getComponent<TowerComponent>(towerEntity, TOWER_COMPONENT)!;
+    expect(tower.tier).toBe(2);
+    expect(tower.upgradePath).toBe('path2');
+    expect(tower.damage).toBe(25);
+    expect(tower.fireRate).toBe(2.4);
+
+    // Attempting to upgrade Path 1 on a Path 2 tower should fail with path_locked
+    const checkOppositePath = upgradeSystem.canUpgradeTower(world, towerEntity, 'path1');
+    expect(checkOppositePath.valid).toBe(false);
+    expect(checkOppositePath.reason).toBe('path_locked');
+
+    const rejectOpposite = upgradeSystem.upgradeTower(world, towerEntity, 'path1');
+    expect(rejectOpposite).toBe(false);
+
+    // Upgrading Path 2 to Tier 3 succeeds
+    const successP2_T3 = upgradeSystem.upgradeTower(world, towerEntity, 'path2');
+    expect(successP2_T3).toBe(true);
+    expect(tower.tier).toBe(3);
+    expect(tower.upgradePath).toBe('path2');
+    expect(tower.damage).toBe(38);
+    expect(tower.fireRate).toBe(3.6);
   });
 
   it('should successfully upgrade through all tiers up to Tier 3', () => {
@@ -167,8 +271,8 @@ describe('TowerUpgradeSystem (TASK-07-02)', () => {
 
     let tower = world.getComponent<TowerComponent>(towerEntity, TOWER_COMPONENT)!;
     expect(tower.tier).toBe(2);
-    expect(tower.damage).toBe(80);
-    expect(tower.splashRadius).toBe(60);
+    expect(tower.damage).toBe(70);
+    expect(tower.splashRadius).toBe(52);
     expect(tower.totalInvestedCost).toBe(baseCost + costT1toT2);
 
     // Upgrade 2 -> 3
@@ -177,8 +281,8 @@ describe('TowerUpgradeSystem (TASK-07-02)', () => {
 
     tower = world.getComponent<TowerComponent>(towerEntity, TOWER_COMPONENT)!;
     expect(tower.tier).toBe(3);
-    expect(tower.damage).toBe(140);
-    expect(tower.splashRadius).toBe(75);
+    expect(tower.damage).toBe(110);
+    expect(tower.splashRadius).toBe(62);
     expect(tower.totalInvestedCost).toBe(baseCost + costT1toT2 + costT2toT3);
 
     // Attempting upgrade on Tier 3 should fail
@@ -217,7 +321,7 @@ describe('TowerUpgradeSystem (TASK-07-02)', () => {
 
     const tower = world.getComponent<TowerComponent>(towerEntity, TOWER_COMPONENT)!;
     expect(tower.tier).toBe(1);
-    expect(tower.damage).toBe(60);
+    expect(tower.damage).toBe(75);
   });
 
   it('should reject upgrade on invalid/dead entities', () => {

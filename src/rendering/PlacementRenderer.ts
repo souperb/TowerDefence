@@ -1,6 +1,6 @@
 import { TileGrid } from '../game/map/TileGrid';
 import { GridPosition, getTileCenter } from '../game/map/CoordinateUtils';
-import { TowerType } from '../game/towers/TowerComponents';
+import { TowerType, UpgradePath } from '../game/towers/TowerComponents';
 import { getTowerDefinition, TowerDefinition } from '../game/towers/TowerCatalog';
 import { EconomyManager } from '../game/economy/EconomyManager';
 
@@ -279,6 +279,52 @@ export class PlacementRenderer {
     }
 
     ctx.restore();
+    ctx.restore();
+  }
+
+  /**
+   * Renders the circular attack range for a currently selected placed tower,
+   * matching the holographic range visual style from initial purchase,
+   * and optionally renders an upgraded range preview indicator when hovering an upgrade option.
+   */
+  public renderSelectedTowerRange(
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    centerY: number,
+    currentRange: number,
+    previewRange?: number | null,
+    upgradePath?: UpgradePath | null
+  ): void {
+    ctx.save();
+
+    // 1. Draw current tower range circle (matching initial purchase visual style)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, currentRange, 0, Math.PI * 2);
+    ctx.fillStyle = this.theme.validRangeFill;
+    ctx.fill();
+
+    ctx.lineWidth = this.theme.rangeLineWidth;
+    ctx.strokeStyle = this.theme.validRangeStroke;
+    ctx.stroke();
+
+    // 2. If hovering an upgrade path that has a next tier range, draw preview range circle
+    if (previewRange !== undefined && previewRange !== null && previewRange > 0) {
+      const isPath2 = upgradePath === 'path2';
+      const previewStroke = isPath2 ? 'rgba(192, 132, 252, 0.95)' : 'rgba(251, 191, 36, 0.95)';
+      const previewFill = isPath2 ? 'rgba(168, 85, 247, 0.14)' : 'rgba(251, 191, 36, 0.14)';
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, previewRange, 0, Math.PI * 2);
+      ctx.fillStyle = previewFill;
+      ctx.fill();
+
+      ctx.lineWidth = this.theme.rangeLineWidth;
+      ctx.strokeStyle = previewStroke;
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     ctx.restore();
   }
 }

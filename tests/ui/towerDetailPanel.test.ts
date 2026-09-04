@@ -175,11 +175,11 @@ describe('TowerDetailPanel (TASK-07-01 & TASK-07-02 & TASK-07-03)', () => {
     expect(vm?.name).toBe('Archer Tower');
     expect(vm?.tier).toBe(1);
     expect(vm?.maxTier).toBe(3);
-    expect(vm?.damage).toBe(15);
-    expect(vm?.nextDamage).toBe(25);
-    expect(vm?.range).toBe(120);
-    expect(vm?.nextRange).toBe(140);
-    expect(vm?.fireRate).toBe(1.2);
+    expect(vm?.damage).toBe(20);
+    expect(vm?.nextDamage).toBe(35);
+    expect(vm?.range).toBe(125);
+    expect(vm?.nextRange).toBe(145);
+    expect(vm?.fireRate).toBe(1.35);
     expect(vm?.targetStrategy).toBe('first');
     expect(vm?.strategyLabel).toBe('First');
     expect(vm?.upgradeCost).toBe(75);
@@ -190,9 +190,9 @@ describe('TowerDetailPanel (TASK-07-01 & TASK-07-02 & TASK-07-03)', () => {
     const el = panel.getElement();
     expect(el.querySelector('[data-ref="name"]')?.textContent).toBe('Archer Tower');
     expect(el.querySelector('[data-ref="tier"]')?.textContent).toContain('Tier 1');
-    expect(el.querySelector('[data-ref="damage"]')?.textContent).toContain('15');
-    expect(el.querySelector('[data-ref="range"]')?.textContent).toContain('120');
-    expect(el.querySelector('[data-ref="fireRate"]')?.textContent).toContain('1.2');
+    expect(el.querySelector('[data-ref="damage"]')?.textContent).toContain('20');
+    expect(el.querySelector('[data-ref="range"]')?.textContent).toContain('125');
+    expect(el.querySelector('[data-ref="fireRate"]')?.textContent).toContain('1.4');
     expect(el.querySelector('[data-ref="strategy"]')?.textContent).toBe('First');
     expect(el.querySelector('[data-ref="btnUpgrade"]')?.textContent).toContain('75g');
     expect(el.querySelector('[data-ref="btnSell"]')?.textContent).toContain('70g');
@@ -238,8 +238,8 @@ describe('TowerDetailPanel (TASK-07-01 & TASK-07-02 & TASK-07-03)', () => {
     // View model updated
     const vm = panel.getViewModel();
     expect(vm?.tier).toBe(2);
-    expect(vm?.damage).toBe(25);
-    expect(vm?.nextDamage).toBe(40);
+    expect(vm?.damage).toBe(35);
+    expect(vm?.nextDamage).toBe(55);
     expect(vm?.upgradeCost).toBe(150);
     expect(vm?.sellRefund).toBe(Math.floor((100 + 75) * 0.7)); // 122
 
@@ -316,5 +316,76 @@ describe('TowerDetailPanel (TASK-07-01 & TASK-07-02 & TASK-07-03)', () => {
     panel.handleCloseClick();
     expect(panel.getIsVisible()).toBe(false);
     expect(selectionController.hasSelection()).toBe(false);
+  });
+
+  it('should display both Path 1 and Path 2 upgrade options for Tier 1 tower', () => {
+    TowerFactory.createTower(world, 'archer', 0, 0);
+    selectionController.selectAt({ x: 0, y: 0 });
+
+    const el = panel.getElement();
+    const btnP1 = el.querySelector('[data-ref="btnUpgrade"]') as HTMLButtonElement;
+    const btnP2 = el.querySelector('[data-ref="btnUpgradePath2"]') as HTMLButtonElement;
+
+    expect(btnP1).not.toBeNull();
+    expect(btnP2).not.toBeNull();
+    expect(btnP1.textContent).toContain('Path 1: Sharpshooter');
+    expect(btnP1.textContent).toContain('75g');
+    expect(btnP2.textContent).toContain('Path 2: Rapid Fire');
+    expect(btnP2.textContent).toContain('75g');
+    expect(btnP1.disabled).toBe(false);
+    expect(btnP2.disabled).toBe(false);
+  });
+
+  it('should upgrade along Path 2, lock Path 1, and show specialized badge', () => {
+    TowerFactory.createTower(world, 'archer', 0, 0);
+    selectionController.selectAt({ x: 0, y: 0 });
+
+    // Upgrade along Path 2 (Rapid Fire)
+    const success = panel.handleUpgradePathClick('path2');
+    expect(success).toBe(true);
+
+    const vm = panel.getViewModel();
+    expect(vm?.tier).toBe(2);
+    expect(vm?.upgradePath).toBe('path2');
+    expect(vm?.damage).toBe(25);
+    expect(vm?.fireRate).toBe(2.4);
+
+    const el = panel.getElement();
+    const tierBadge = el.querySelector('[data-ref="tier"]');
+    expect(tierBadge?.textContent).toContain('Tier 2');
+    expect(tierBadge?.textContent).toContain('Rapid Fire');
+
+    const btnP1 = el.querySelector('[data-ref="btnUpgrade"]') as HTMLButtonElement;
+    const btnP2 = el.querySelector('[data-ref="btnUpgradePath2"]') as HTMLButtonElement;
+
+    expect(btnP1.textContent).toContain('Path 1 (Locked)');
+    expect(btnP1.disabled).toBe(true);
+    expect(btnP2.textContent).toContain('Storm Repeater');
+    expect(btnP2.textContent).toContain('150g');
+    expect(btnP2.disabled).toBe(false);
+  });
+
+  it('should return preview upgrade range when hovering an upgrade option', () => {
+    TowerFactory.createTower(world, 'archer', 0, 0);
+    selectionController.selectAt({ x: 0, y: 0 });
+
+    // Initially no path hovered
+    expect(panel.getHoveredPath()).toBeNull();
+    expect(panel.getPreviewUpgradeRange()).toBeNull();
+
+    // Hover Path 1: Archer Tier 1 -> Tier 2 Sharpshooter (range 145)
+    panel.setHoveredPath('path1');
+    expect(panel.getHoveredPath()).toBe('path1');
+    expect(panel.getPreviewUpgradeRange()).toBe(145);
+
+    // Hover Path 2: Archer Tier 1 -> Tier 2 Rapid Fire (range 130)
+    panel.setHoveredPath('path2');
+    expect(panel.getHoveredPath()).toBe('path2');
+    expect(panel.getPreviewUpgradeRange()).toBe(130);
+
+    // Unhover
+    panel.setHoveredPath(null);
+    expect(panel.getHoveredPath()).toBeNull();
+    expect(panel.getPreviewUpgradeRange()).toBeNull();
   });
 });

@@ -4,6 +4,7 @@ import { EconomyManager } from '../economy/EconomyManager';
 import {
   TOWER_COMPONENT,
   TowerComponent,
+  UpgradePath,
 } from '../towers/TowerComponents';
 import {
   MAX_TOWER_TIER,
@@ -17,13 +18,15 @@ export type UpgradeRejectReason =
   | 'entity_dead'
   | 'not_a_tower'
   | 'max_tier'
-  | 'insufficient_gold';
+  | 'insufficient_gold'
+  | 'path_locked';
 
 export interface UpgradeValidationResult {
   valid: boolean;
   reason?: UpgradeRejectReason;
   cost?: number;
   nextTier?: number;
+  path?: UpgradePath;
 }
 
 export type TowerUpgradedCallback = (
@@ -85,9 +88,13 @@ export class TowerUpgradeSystem implements System {
   }
 
   /**
-   * Validates whether the given tower entity can be upgraded.
+   * Validates whether the given tower entity can be upgraded along a specified path.
    */
-  public canUpgradeTower(world: World, entity: Entity): UpgradeValidationResult {
+  public canUpgradeTower(
+    world: World,
+    entity: Entity,
+    requestedPath?: UpgradePath
+  ): UpgradeValidationResult {
     if (!world.isAlive(entity)) {
       return { valid: false, reason: 'entity_dead' };
     }
@@ -101,36 +108,55 @@ export class TowerUpgradeSystem implements System {
       return { valid: false, reason: 'max_tier' };
     }
 
-    const cost = getUpgradeCost(tower.towerType, tower.tier);
+    // Determine path
+    let targetPath: UpgradePath = requestedPath ?? tower.upgradePath ?? 'path1';
+
+    // If tower already locked into a path at tier >= 2, disallow alternate path
+    if (tower.tier >= 2 && tower.upgradePath) {
+      if (requestedPath && requestedPath !== tower.upgradePath) {
+        return { valid: false, reason: 'path_locked', path: requestedPath };
+      }
+      targetPath = tower.upgradePath;
+    }
+
+    const cost = getUpgradeCost(tower.towerType, tower.tier, targetPath);
     if (cost === null || cost <= 0) {
-      return { valid: false, reason: 'max_tier' };
+      return { valid: false, reason: 'max_tier', path: targetPath };
     }
 
     if (!this.economy.canAfford(cost)) {
-      return { valid: false, reason: 'insufficient_gold', cost, nextTier: tower.tier + 1 };
+      return {
+        valid: false,
+        reason: 'insufficient_gold',
+        cost,
+        nextTier: tower.tier + 1,
+        path: targetPath,
+      };
     }
 
-    return { valid: true, cost, nextTier: tower.tier + 1 };
+    return { valid: true, cost, nextTier: tower.tier + 1, path: targetPath };
   }
 
   /**
    * Returns the upgrade cost for the next tier of a tower entity, or null if ineligible.
    */
-  public getUpgradeCost(world: World, entity: Entity): number | null {
+  public getUpgradeCost(world: World, entity: Entity, path?: UpgradePath): number | null {
     if (!world.isAlive(entity)) return null;
     const tower = world.getComponent<TowerComponent>(entity, TOWER_COMPONENT);
     if (!tower) return null;
-    return getUpgradeCost(tower.towerType, tower.tier);
+    const targetPath = path ?? tower.upgradePath ?? 'path1';
+    return getUpgradeCost(tower.towerType, tower.tier, targetPath);
   }
 
   /**
    * Returns the next tier's stats for a tower entity, or null if at max tier.
    */
-  public getNextTierStats(world: World, entity: Entity): TowerTierStats | null {
+  public getNextTierStats(world: World, entity: Entity, path?: UpgradePath): TowerTierStats | null {
     if (!world.isAlive(entity)) return null;
     const tower = world.getComponent<TowerComponent>(entity, TOWER_COMPONENT);
     if (!tower) return null;
-    return getNextTierStats(tower.towerType, tower.tier);
+    const targetPath = path ?? tower.upgradePath ?? 'path1';
+    return getNextTierStats(tower.towerType, tower.tier, targetPath);
   }
 
   /**
@@ -138,10 +164,11 @@ export class TowerUpgradeSystem implements System {
    *
    * @param world The ECS World instance.
    * @param entity The tower Entity to upgrade.
+   * @param requestedPath Optional upgrade path to choose/follow.
    * @returns true if upgrade succeeded, false if rejected.
    */
-  public upgradeTower(world: World, entity: Entity): boolean {
-    const validation = this.canUpgradeTower(world, entity);
+  public upgradeTower(world: World, entity: Entity, requestedPath?: UpgradePath): boolean {
+    const validation = this.canUpgradeTower(world, entity, requestedPath);
     if (!validation.valid || validation.cost === undefined) {
       this.notifyRejected(entity, validation.reason ?? 'not_a_tower');
       return false;
@@ -149,6 +176,7 @@ export class TowerUpgradeSystem implements System {
 
     const tower = world.getComponent<TowerComponent>(entity, TOWER_COMPONENT)!;
     const cost = validation.cost;
+    const targetPath = validation.path ?? requestedPath ?? tower.upgradePath ?? 'path1';
 
     // Deduct gold
     const deducted = this.economy.deductGold(cost, 'tower_upgrade');
@@ -159,10 +187,11 @@ export class TowerUpgradeSystem implements System {
 
     const previousTier = tower.tier;
     const newTier = previousTier + 1;
-    const newStats = getTowerTierStats(tower.towerType, newTier);
+    const newStats = getTowerTierStats(tower.towerType, newTier, targetPath);
 
     // Apply upgraded stats
     tower.tier = newTier;
+    tower.upgradePath = targetPath;
     tower.damage = newStats.damage;
     tower.range = newStats.range;
     tower.fireRate = newStats.fireRate;
@@ -175,6 +204,7 @@ export class TowerUpgradeSystem implements System {
       towerType: tower.towerType,
       newTier: tower.tier,
       previousTier,
+      upgradePath: tower.upgradePath,
       upgradeCost: cost,
       totalInvestedCost: tower.totalInvestedCost,
       damage: tower.damage,
