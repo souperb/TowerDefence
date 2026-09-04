@@ -251,6 +251,7 @@ if (canvas) {
       waveManager,
       stateMachine,
       eventBus: engineEvents,
+      initialSoundtrack: audioManager.getSoundtrackMode(),
       onSpeedChange: (speed) => {
         audioManager.playSfx('ui_click');
         settingsManager.setGameSpeed(speed);
@@ -267,6 +268,11 @@ if (canvas) {
         const isMuted = audioManager.toggleMute();
         hudView.setMuted(isMuted);
       },
+      onToggleSoundtrack: (_mode) => {
+        audioManager.playSfx('ui_click');
+        const newMode = audioManager.toggleSoundtrack();
+        hudView.setSoundtrack(newMode);
+      },
       onStartWave: () => {
         audioManager.playSfx('ui_click');
       },
@@ -276,6 +282,7 @@ if (canvas) {
     });
     hudView.setAutoWave(savedAutoWave);
     hudView.setMuted(audioManager.isMuted());
+    hudView.setSoundtrack(audioManager.getSoundtrackMode());
 
     new BuildToolbar({
       container: uiLayer,

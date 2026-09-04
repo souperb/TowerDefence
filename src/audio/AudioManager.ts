@@ -1,15 +1,15 @@
 /**
  * AudioManager
- * Central facade for 8-bit chiptune audio system in Tower Defence.
+ * Central facade for modern electronic and 8-bit chiptune audio system in Tower Defence.
  * Coordinates AudioContext lifecycle, SoundEffects playback, Level BGM sequencing,
- * EventBus game triggers, and SettingsManager volume persistence.
+ * EventBus game triggers, and SettingsManager volume and soundtrack persistence.
  */
 
 import { AudioContextManager } from './AudioContextManager';
 import { SoundEffects } from './SoundEffects';
 import { MusicSequencer } from './MusicSequencer';
-import { getTrackForLevel, LEVEL_TRACKS } from './MusicTracks';
-import { SfxName, MusicTrack } from './types';
+import { getTrackForLevel } from './MusicTracks';
+import { SfxName, MusicTrack, SoundtrackMode } from './types';
 import { EventBus } from '../core/events/EngineEvents';
 import { SettingsManager } from '../storage/SettingsManager';
 
@@ -18,6 +18,7 @@ export interface AudioManagerOptions {
   settingsManager?: SettingsManager;
   initialLevelId?: string;
   autoPlayMusic?: boolean;
+  soundtrackMode?: SoundtrackMode;
 }
 
 export class AudioManager {
@@ -27,12 +28,19 @@ export class AudioManager {
   public readonly sfx: SoundEffects;
   public readonly sequencer: MusicSequencer;
 
+  private soundtrackMode: SoundtrackMode = 'modern';
+  private currentLevelId: string = 'level-1';
+  private settingsManager: SettingsManager | null = null;
   private unsubs: Array<() => void> = [];
 
   constructor(options: AudioManagerOptions = {}) {
     this.contextManager = new AudioContextManager();
     this.sfx = new SoundEffects(this.contextManager);
     this.sequencer = new MusicSequencer(this.contextManager);
+
+    if (options.soundtrackMode) {
+      this.soundtrackMode = options.soundtrackMode;
+    }
 
     if (options.settingsManager) {
       this.bindSettingsManager(options.settingsManager);
@@ -42,6 +50,7 @@ export class AudioManager {
     }
 
     if (options.initialLevelId) {
+      this.currentLevelId = options.initialLevelId;
       this.playLevelTrack(options.initialLevelId);
     }
   }
@@ -61,7 +70,7 @@ export class AudioManager {
   }
 
   /**
-   * Plays a procedural 8-bit sound effect.
+   * Plays a procedural sound effect.
    */
   public playSfx(name: SfxName, options: { volumeScale?: number } = {}): void {
     this.sfx.play(name, options);
@@ -72,7 +81,8 @@ export class AudioManager {
    */
   public playMusic(trackOrLevelId: string | MusicTrack): void {
     if (typeof trackOrLevelId === 'string') {
-      const track = LEVEL_TRACKS[trackOrLevelId] ?? getTrackForLevel(trackOrLevelId);
+      this.currentLevelId = trackOrLevelId;
+      const track = getTrackForLevel(trackOrLevelId, this.soundtrackMode);
       this.sequencer.playTrack(track);
     } else {
       this.sequencer.playTrack(trackOrLevelId);
@@ -80,11 +90,46 @@ export class AudioManager {
   }
 
   /**
-   * Plays the designated 8-bit theme for a level.
+   * Plays the soundtrack theme for a level.
    */
-  public playLevelTrack(levelId: string): void {
-    const track = getTrackForLevel(levelId);
+  public playLevelTrack(levelId: string, mode?: SoundtrackMode): void {
+    this.currentLevelId = levelId;
+    const targetMode = mode ?? this.soundtrackMode;
+    const track = getTrackForLevel(levelId, targetMode);
     this.sequencer.playTrack(track);
+  }
+
+  /**
+   * Gets current soundtrack mode ('modern' or '8bit').
+   */
+  public getSoundtrackMode(): SoundtrackMode {
+    return this.soundtrackMode;
+  }
+
+  /**
+   * Sets current soundtrack mode and updates currently playing music track if active.
+   */
+  public setSoundtrackMode(mode: SoundtrackMode, switchCurrentBgm: boolean = true): void {
+    if (this.soundtrackMode === mode && !switchCurrentBgm) return;
+    this.soundtrackMode = mode;
+
+    if (this.settingsManager && this.settingsManager.get('soundtrack') !== mode) {
+      this.settingsManager.setSoundtrack(mode);
+    }
+
+    if (switchCurrentBgm && this.currentLevelId) {
+      const track = getTrackForLevel(this.currentLevelId, mode);
+      this.sequencer.playTrack(track);
+    }
+  }
+
+  /**
+   * Toggles between 'modern' and '8bit' soundtrack modes.
+   */
+  public toggleSoundtrack(): SoundtrackMode {
+    const nextMode: SoundtrackMode = this.soundtrackMode === 'modern' ? '8bit' : 'modern';
+    this.setSoundtrackMode(nextMode, true);
+    return nextMode;
   }
 
   public stopMusic(): void {
@@ -148,15 +193,25 @@ export class AudioManager {
    * Synchronizes volume and settings changes with SettingsManager.
    */
   public bindSettingsManager(settings: SettingsManager): void {
+    this.settingsManager = settings;
+
     // Apply current settings
     this.setMasterVolume(settings.get('masterVolume') ?? 0.8);
     this.setSfxVolume(settings.get('sfxVolume') ?? 0.8);
     this.setBgmVolume(settings.get('bgmVolume') ?? 0.7);
 
+    const savedSoundtrack = settings.get('soundtrack') ?? 'modern';
+    this.soundtrackMode = savedSoundtrack;
+
     this.unsubs.push(
       settings.onChange('masterVolume', (v) => this.setMasterVolume(v)),
       settings.onChange('sfxVolume', (v) => this.setSfxVolume(v)),
-      settings.onChange('bgmVolume', (v) => this.setBgmVolume(v))
+      settings.onChange('bgmVolume', (v) => this.setBgmVolume(v)),
+      settings.onChange('soundtrack', (mode) => {
+        if (mode && mode !== this.soundtrackMode) {
+          this.setSoundtrackMode(mode, true);
+        }
+      })
     );
   }
 

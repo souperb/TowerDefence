@@ -139,4 +139,31 @@ describe('AudioManager', () => {
     audioManager.stopMusic();
     expect(audioManager.isMusicPlaying()).toBe(false);
   });
+
+  it('should toggle soundtrack between modern and 8bit mode and switch active track', () => {
+    expect(audioManager.getSoundtrackMode()).toBe('modern');
+    expect(audioManager.getCurrentTrack()?.style).toBe('modern');
+
+    const nextMode = audioManager.toggleSoundtrack();
+    expect(nextMode).toBe('8bit');
+    expect(audioManager.getSoundtrackMode()).toBe('8bit');
+    expect(audioManager.getCurrentTrack()?.style).toBe('chiptune');
+    expect(settingsManager.get('soundtrack')).toBe('8bit');
+
+    const modernAgain = audioManager.toggleSoundtrack();
+    expect(modernAgain).toBe('modern');
+    expect(audioManager.getSoundtrackMode()).toBe('modern');
+    expect(audioManager.getCurrentTrack()?.style).toBe('modern');
+    expect(settingsManager.get('soundtrack')).toBe('modern');
+  });
+
+  it('should update soundtrack mode when SettingsManager changes', () => {
+    settingsManager.setSoundtrack('8bit');
+    expect(audioManager.getSoundtrackMode()).toBe('8bit');
+    expect(audioManager.getCurrentTrack()?.style).toBe('chiptune');
+
+    settingsManager.setSoundtrack('modern');
+    expect(audioManager.getSoundtrackMode()).toBe('modern');
+    expect(audioManager.getCurrentTrack()?.style).toBe('modern');
+  });
 });

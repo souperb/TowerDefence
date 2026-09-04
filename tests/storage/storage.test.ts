@@ -332,6 +332,7 @@ describe('SettingsManager', () => {
     settingsManager.setMasterVolume(0.25);
     settingsManager.setShowRangeOnHover(false);
     settingsManager.setGameSpeed(4);
+    settingsManager.setSoundtrack('8bit');
 
     // Create a new SettingsManager pointing to the same storage service
     const reloadedManager = new SettingsManager(storageService);
@@ -340,6 +341,18 @@ describe('SettingsManager', () => {
     expect(reloadedSettings.masterVolume).toBe(0.25);
     expect(reloadedSettings.showRangeOnHover).toBe(false);
     expect(reloadedSettings.gameSpeed).toBe(4);
+    expect(reloadedSettings.soundtrack).toBe('8bit');
+  });
+
+  it('should support soundtrack get, set, and toggle', () => {
+    expect(settingsManager.getSoundtrack()).toBe('modern');
+
+    settingsManager.setSoundtrack('8bit');
+    expect(settingsManager.getSoundtrack()).toBe('8bit');
+
+    const toggled = settingsManager.toggleSoundtrack();
+    expect(toggled).toBe('modern');
+    expect(settingsManager.getSoundtrack()).toBe('modern');
   });
 
   it('should reset to defaults and notify listeners', () => {

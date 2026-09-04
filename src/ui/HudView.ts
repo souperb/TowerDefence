@@ -3,6 +3,7 @@ import { TimeControls, GameSpeed } from '../core/loop/TimeControls';
 import { WaveManager } from '../game/state/WaveManager';
 import { GameStateMachine, GameState } from '../game/state/GameStateMachine';
 import { EventBus, engineEvents } from '../core/events/EngineEvents';
+import { SoundtrackMode } from '../audio/types';
 
 export interface HudViewConfig {
   container?: HTMLElement | string;
@@ -11,6 +12,7 @@ export interface HudViewConfig {
   waveManager?: WaveManager;
   stateMachine?: GameStateMachine;
   eventBus?: EventBus;
+  initialSoundtrack?: SoundtrackMode;
   onStartWave?: () => void;
   onTogglePause?: () => void;
   onCycleSpeed?: () => void;
@@ -18,11 +20,12 @@ export interface HudViewConfig {
   onOpenLevels?: () => void;
   onAutoWaveToggle?: (enabled: boolean) => void;
   onToggleAudio?: () => void;
+  onToggleSoundtrack?: (mode: SoundtrackMode) => void;
 }
 
 /**
  * Top HUD view component rendering real-time metrics:
- * Gold, Lives, Score, Wave indicator / Countdown, Speed toggles (1x/2x/4x), Pause/Resume, and Start Wave button.
+ * Gold, Lives, Score, Wave indicator / Countdown, Speed toggles (1x/2x/4x), Pause/Resume, Soundtrack toggle, and Start Wave button.
  */
 export class HudView {
   private element: HTMLElement;
@@ -32,6 +35,7 @@ export class HudView {
   private waveManager?: WaveManager;
   private stateMachine?: GameStateMachine;
   private eventBus: EventBus;
+  private currentSoundtrack: SoundtrackMode = 'modern';
 
   private unsubs: Array<() => void> = [];
   private startWaveCallbacks: Set<() => void> = new Set();
@@ -41,6 +45,7 @@ export class HudView {
   private openLevelsCallbacks: Set<() => void> = new Set();
   private autoWaveToggleCallbacks: Set<(enabled: boolean) => void> = new Set();
   private toggleAudioCallbacks: Set<() => void> = new Set();
+  private toggleSoundtrackCallbacks: Set<(mode: SoundtrackMode) => void> = new Set();
 
   constructor(config: HudViewConfig = {}) {
     this.presenter = config.presenter;
@@ -48,6 +53,9 @@ export class HudView {
     this.waveManager = config.waveManager;
     this.stateMachine = config.stateMachine;
     this.eventBus = config.eventBus ?? engineEvents;
+    if (config.initialSoundtrack) {
+      this.currentSoundtrack = config.initialSoundtrack;
+    }
 
     if (config.onStartWave) this.startWaveCallbacks.add(config.onStartWave);
     if (config.onTogglePause) this.togglePauseCallbacks.add(config.onTogglePause);
@@ -56,6 +64,7 @@ export class HudView {
     if (config.onOpenLevels) this.openLevelsCallbacks.add(config.onOpenLevels);
     if (config.onAutoWaveToggle) this.autoWaveToggleCallbacks.add(config.onAutoWaveToggle);
     if (config.onToggleAudio) this.toggleAudioCallbacks.add(config.onToggleAudio);
+    if (config.onToggleSoundtrack) this.toggleSoundtrackCallbacks.add(config.onToggleSoundtrack);
 
     this.element = this.createElement();
     this.mount(config.container);
@@ -66,6 +75,8 @@ export class HudView {
     } else if (this.waveManager) {
       this.setAutoWave(this.waveManager.isAutoStartEnabled());
     }
+
+    this.setSoundtrack(this.currentSoundtrack);
   }
 
   private createElement(): HTMLElement {
@@ -105,9 +116,13 @@ export class HudView {
           <span class="btn-icon">🗺️</span>
           <span class="btn-text">Levels</span>
         </button>
-        <button type="button" class="btn btn-secondary btn-audio" data-ref="btnAudio" aria-label="Toggle Audio Sound and Music" title="Toggle Sound / Music (8-Bit Audio)">
+        <button type="button" class="btn btn-secondary btn-audio" data-ref="btnAudio" aria-label="Toggle Audio Sound and Music" title="Toggle Sound / Music">
           <span class="btn-icon" data-ref="icoAudio">🔊</span>
           <span class="audio-label" data-ref="lblAudio">Sound</span>
+        </button>
+        <button type="button" class="btn btn-secondary btn-soundtrack" data-ref="btnSoundtrack" aria-label="Toggle Soundtrack (Modern Electro / Retro 8-Bit)" title="Toggle Soundtrack (Modern Electro / Retro 8-Bit)">
+          <span class="btn-icon" data-ref="icoSoundtrack">🎧</span>
+          <span class="soundtrack-label" data-ref="lblSoundtrack">OST: Modern</span>
         </button>
         <button type="button" class="btn btn-secondary btn-auto-wave" data-ref="btnAutoWave" aria-label="Toggle Auto Wave" title="Automatically start waves when previous wave finishes">
           <span class="btn-icon">⚡</span>
@@ -132,6 +147,9 @@ export class HudView {
 
     const btnAudio = el.querySelector('[data-ref="btnAudio"]') as HTMLButtonElement | null;
     btnAudio?.addEventListener('click', () => this.handleToggleAudioClick());
+
+    const btnSoundtrack = el.querySelector('[data-ref="btnSoundtrack"]') as HTMLButtonElement | null;
+    btnSoundtrack?.addEventListener('click', () => this.handleToggleSoundtrackClick());
 
     const btnAutoWave = el.querySelector('[data-ref="btnAutoWave"]') as HTMLButtonElement | null;
     btnAutoWave?.addEventListener('click', () => this.handleToggleAutoWaveClick());
@@ -254,6 +272,28 @@ export class HudView {
     if (el) el.textContent = `${speed}x`;
   }
 
+  public setSoundtrack(mode: SoundtrackMode): void {
+    this.currentSoundtrack = mode;
+    const ico = this.element.querySelector('[data-ref="icoSoundtrack"]');
+    const lbl = this.element.querySelector('[data-ref="lblSoundtrack"]');
+    const btn = this.element.querySelector('[data-ref="btnSoundtrack"]') as HTMLButtonElement | null;
+    if (ico) ico.textContent = mode === 'modern' ? '🎧' : '👾';
+    if (lbl) lbl.textContent = mode === 'modern' ? 'OST: Modern' : 'OST: 8-Bit';
+    if (btn) {
+      if (mode === '8bit') {
+        btn.classList.add('btn-8bit');
+        btn.setAttribute('title', 'Soundtrack: 8-Bit Retro (Click to switch to Modern)');
+      } else {
+        btn.classList.remove('btn-8bit');
+        btn.setAttribute('title', 'Soundtrack: Modern Electro (Click to switch to 8-Bit)');
+      }
+    }
+  }
+
+  public getSoundtrack(): SoundtrackMode {
+    return this.currentSoundtrack;
+  }
+
   public setMuted(muted: boolean): void {
     const ico = this.element.querySelector('[data-ref="icoAudio"]');
     const lbl = this.element.querySelector('[data-ref="lblAudio"]');
@@ -368,6 +408,14 @@ export class HudView {
     }
   }
 
+  public handleToggleSoundtrackClick(): void {
+    const nextMode: SoundtrackMode = this.currentSoundtrack === 'modern' ? '8bit' : 'modern';
+    this.setSoundtrack(nextMode);
+    for (const cb of this.toggleSoundtrackCallbacks) {
+      cb(nextMode);
+    }
+  }
+
   public handleToggleAutoWaveClick(): void {
     let nextState = false;
     if (this.waveManager) {
@@ -437,6 +485,11 @@ export class HudView {
     return () => this.toggleAudioCallbacks.delete(callback);
   }
 
+  public onToggleSoundtrack(callback: (mode: SoundtrackMode) => void): () => void {
+    this.toggleSoundtrackCallbacks.add(callback);
+    return () => this.toggleSoundtrackCallbacks.delete(callback);
+  }
+
   public onAutoWaveToggle(callback: (enabled: boolean) => void): () => void {
     this.autoWaveToggleCallbacks.add(callback);
     return () => this.autoWaveToggleCallbacks.delete(callback);
@@ -467,6 +520,7 @@ export class HudView {
     this.cycleSpeedCallbacks.clear();
     this.speedChangeCallbacks.clear();
     this.toggleAudioCallbacks.clear();
+    this.toggleSoundtrackCallbacks.clear();
     this.openLevelsCallbacks.clear();
     this.autoWaveToggleCallbacks.clear();
 

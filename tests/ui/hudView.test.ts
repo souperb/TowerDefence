@@ -235,4 +235,40 @@ describe('HudView (US-10 / TASK-10-01)', () => {
     expect(el.querySelector('[data-ref="lblAutoWave"]')?.textContent).toBe('Auto: ON');
     expect((el.querySelector('[data-ref="btnStartWave"]') as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('should toggle soundtrack between modern and 8bit on soundtrack button click', () => {
+    const onToggleSoundtrack = vi.fn();
+    const customHud = new HudView({
+      container,
+      initialSoundtrack: 'modern',
+      onToggleSoundtrack,
+    });
+
+    const soundtrackBtn = customHud.getElement().querySelector('[data-ref="btnSoundtrack"]') as HTMLButtonElement;
+    const soundtrackLbl = customHud.getElement().querySelector('[data-ref="lblSoundtrack"]');
+    const soundtrackIco = customHud.getElement().querySelector('[data-ref="icoSoundtrack"]');
+
+    expect(soundtrackBtn).not.toBeNull();
+    expect(soundtrackLbl?.textContent).toBe('OST: Modern');
+    expect(soundtrackIco?.textContent).toBe('🎧');
+    expect(customHud.getSoundtrack()).toBe('modern');
+
+    // Toggle to 8-Bit
+    soundtrackBtn.click();
+    expect(soundtrackLbl?.textContent).toBe('OST: 8-Bit');
+    expect(soundtrackIco?.textContent).toBe('👾');
+    expect(customHud.getSoundtrack()).toBe('8bit');
+    expect(soundtrackBtn.classList.contains('btn-8bit')).toBe(true);
+    expect(onToggleSoundtrack).toHaveBeenCalledWith('8bit');
+
+    // Toggle back to Modern
+    soundtrackBtn.click();
+    expect(soundtrackLbl?.textContent).toBe('OST: Modern');
+    expect(soundtrackIco?.textContent).toBe('🎧');
+    expect(customHud.getSoundtrack()).toBe('modern');
+    expect(soundtrackBtn.classList.contains('btn-8bit')).toBe(false);
+    expect(onToggleSoundtrack).toHaveBeenCalledWith('modern');
+
+    customHud.destroy();
+  });
 });

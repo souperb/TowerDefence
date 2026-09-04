@@ -1,4 +1,5 @@
 export type GameSpeed = 1 | 2 | 4;
+export type SoundtrackMode = 'modern' | '8bit';
 
 export interface GameSettings {
   masterVolume: number;
@@ -7,6 +8,7 @@ export interface GameSettings {
   showRangeOnHover: boolean;
   gameSpeed: GameSpeed;
   autoWave?: boolean;
+  soundtrack?: SoundtrackMode;
 }
 
 export interface GameProgress {
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: Readonly<GameSettings> = {
   showRangeOnHover: true,
   gameSpeed: 1,
   autoWave: false,
+  soundtrack: 'modern',
 };
 
 export const DEFAULT_PROGRESS: Readonly<GameProgress> = {
@@ -73,6 +76,7 @@ export function createDefaultStorageSchema(): GameStorageSchema {
       showRangeOnHover: DEFAULT_SETTINGS.showRangeOnHover,
       gameSpeed: DEFAULT_SETTINGS.gameSpeed,
       autoWave: DEFAULT_SETTINGS.autoWave,
+      soundtrack: DEFAULT_SETTINGS.soundtrack ?? 'modern',
     },
     progress: {
       highScores: { ...DEFAULT_PROGRESS.highScores },
@@ -87,6 +91,10 @@ export function createDefaultStorageSchema(): GameStorageSchema {
 
 export function isValidGameSpeed(speed: unknown): speed is GameSpeed {
   return speed === 1 || speed === 2 || speed === 4;
+}
+
+export function isValidSoundtrack(mode: unknown): mode is SoundtrackMode {
+  return mode === 'modern' || mode === '8bit';
 }
 
 export function isValidStorageSchema(data: unknown): data is GameStorageSchema {
@@ -111,6 +119,10 @@ export function isValidStorageSchema(data: unknown): data is GameStorageSchema {
     typeof s.showRangeOnHover !== 'boolean' ||
     !isValidGameSpeed(s.gameSpeed)
   ) {
+    return false;
+  }
+
+  if (s.soundtrack !== undefined && !isValidSoundtrack(s.soundtrack)) {
     return false;
   }
 

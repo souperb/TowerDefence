@@ -1,8 +1,10 @@
 import {
   type GameSettings,
   type GameSpeed,
+  type SoundtrackMode,
   DEFAULT_SETTINGS,
   isValidGameSpeed,
+  isValidSoundtrack,
 } from './StorageSchema';
 import { StorageService } from './StorageService';
 
@@ -52,6 +54,10 @@ export class SettingsManager {
       this.currentSettings.showRangeOnHover = Boolean(value);
     } else if (key === 'autoWave') {
       this.currentSettings.autoWave = Boolean(value);
+    } else if (key === 'soundtrack') {
+      if (isValidSoundtrack(value)) {
+        this.currentSettings.soundtrack = value;
+      }
     }
 
     this.persistAndNotify([key]);
@@ -83,6 +89,10 @@ export class SettingsManager {
       this.currentSettings.gameSpeed = partial.gameSpeed;
       changedKeys.push('gameSpeed');
     }
+    if (partial.soundtrack !== undefined && isValidSoundtrack(partial.soundtrack)) {
+      this.currentSettings.soundtrack = partial.soundtrack;
+      changedKeys.push('soundtrack');
+    }
 
     this.persistAndNotify(changedKeys);
   }
@@ -109,6 +119,20 @@ export class SettingsManager {
 
   public setAutoWave(autoWave: boolean): void {
     this.set('autoWave', autoWave);
+  }
+
+  public getSoundtrack(): SoundtrackMode {
+    return this.currentSettings.soundtrack ?? 'modern';
+  }
+
+  public setSoundtrack(soundtrack: SoundtrackMode): void {
+    this.set('soundtrack', soundtrack);
+  }
+
+  public toggleSoundtrack(): SoundtrackMode {
+    const next = this.getSoundtrack() === 'modern' ? '8bit' : 'modern';
+    this.setSoundtrack(next);
+    return next;
   }
 
   public resetDefaults(): void {

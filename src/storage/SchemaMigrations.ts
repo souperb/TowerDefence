@@ -3,11 +3,13 @@ import {
   type GameSettings,
   type GameProgress,
   type GameSpeed,
+  type SoundtrackMode,
   STORAGE_SCHEMA_VERSION,
   DEFAULT_SETTINGS,
   DEFAULT_PROGRESS,
   createDefaultStorageSchema,
   isValidGameSpeed,
+  isValidSoundtrack,
 } from './StorageSchema';
 
 export type MigrationFunction = (data: Record<string, unknown>) => Record<string, unknown>;
@@ -26,6 +28,13 @@ function sanitizeGameSpeed(speed: unknown, defaultSpeed: GameSpeed): GameSpeed {
   return defaultSpeed;
 }
 
+function sanitizeSoundtrack(soundtrack: unknown, defaultSoundtrack: SoundtrackMode): SoundtrackMode {
+  if (isValidSoundtrack(soundtrack)) {
+    return soundtrack;
+  }
+  return defaultSoundtrack;
+}
+
 function sanitizeSettings(rawSettings: unknown): GameSettings {
   if (typeof rawSettings !== 'object' || rawSettings === null) {
     return { ...DEFAULT_SETTINGS };
@@ -41,6 +50,7 @@ function sanitizeSettings(rawSettings: unknown): GameSettings {
         ? s.showRangeOnHover
         : DEFAULT_SETTINGS.showRangeOnHover,
     gameSpeed: sanitizeGameSpeed(s.gameSpeed, DEFAULT_SETTINGS.gameSpeed),
+    soundtrack: sanitizeSoundtrack(s.soundtrack, DEFAULT_SETTINGS.soundtrack ?? 'modern'),
   };
 }
 
