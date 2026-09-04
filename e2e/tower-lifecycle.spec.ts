@@ -24,7 +24,7 @@ test.describe('Tower Lifecycle (Inspect, Upgrade, Target Strategy, Sell)', () =>
     expect(await game.towerDetail.getStrategy()).toBe('First');
 
     // Check upgrade and sell button texts
-    expect(await game.towerDetail.getUpgradeButtonText()).toContain('Upgrade');
+    expect(await game.towerDetail.getUpgradeButtonText()).toContain('75g');
     expect(await game.towerDetail.getSellButtonText()).toContain('Sell (+70g)');
   });
 
